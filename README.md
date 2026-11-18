@@ -1,104 +1,371 @@
-# Домашнее задание к занятию «Компоненты Kubernetes» - Студент группы FOPS-42 Власов Владимир
+# Домашнее задание к занятию «Helm» - Студент группы FOPS-42 Власов Владимир
+
+# Домашнее задание к занятию «Helm»
 
 ### Цель задания
 
-Рассчитать требования к кластеру под проект
+В тестовой среде Kubernetes необходимо установить и обновить приложения с помощью Helm.
 
 ------
 
-### Инструменты и дополнительные материалы, которые пригодятся для выполнения задания:
+### Чеклист готовности к домашнему заданию
 
-- [Considerations for large clusters](https://kubernetes.io/docs/setup/best-practices/cluster-large/),
-- [Architecting Kubernetes clusters — choosing a worker node size](https://learnk8s.io/kubernetes-node-size).
+1. Установленное k8s-решение, например, MicroK8S.
+2. Установленный локальный kubectl.
+3. Установленный локальный Helm.
+4. Редактор YAML-файлов с подключенным репозиторием GitHub.
 
 ------
 
-### Задание. Необходимо определить требуемые ресурсы
-Известно, что проекту нужны база данных, система кеширования, а само приложение состоит из бекенда и фронтенда. Опишите, какие ресурсы нужны, если известно:
+### Инструменты и дополнительные материалы, которые пригодятся для выполнения задания
+
+1. [Инструкция](https://helm.sh/docs/intro/install/) по установке Helm. [Helm completion](https://helm.sh/docs/helm/helm_completion/).
+
+------
+
+### Задание 1. Подготовить Helm-чарт для приложения
 
 1. Необходимо упаковать приложение в чарт для деплоя в разные окружения. 
-2. База данных должна быть отказоустойчивой. Потребляет 4 ГБ ОЗУ в работе, 1 ядро. 3 копии. 
-3. Кеш должен быть отказоустойчивый. Потребляет 4 ГБ ОЗУ в работе, 1 ядро. 3 копии. 
-4. Фронтенд обрабатывает внешние запросы быстро, отдавая статику. Потребляет не более 50 МБ ОЗУ на каждый экземпляр, 0.2 ядра. 5 копий. 
-5. Бекенд потребляет 600 МБ ОЗУ и по 1 ядру на копию. 10 копий.
+2. Каждый компонент приложения деплоится отдельным deployment’ом или statefulset’ом.
+3. В переменных чарта измените образ приложения для изменения версии.
 
-----
+------
+### Задание 2. Запустить две версии в разных неймспейсах
+
+1. Подготовив чарт, необходимо его проверить. Запуститe несколько копий приложения.
+2. Одну версию в namespace=app1, вторую версию в том же неймспейсе, третью версию в namespace=app2.
+3. Продемонстрируйте результат.
 
 ### Правила приёма работы
 
-1. Домашняя работа оформляется в своем Git-репозитории в файле README.md. Выполненное домашнее задание пришлите ссылкой на .md-файл в вашем репозитории.
-2. Сначала сделайте расчёт всех необходимых ресурсов.
-3. Затем прикиньте количество рабочих нод, которые справятся с такой нагрузкой.
-4. Добавьте к полученным цифрам запас, который учитывает выход из строя как минимум одной ноды. 
-5. Добавьте служебные ресурсы к нодам. Помните, что для разных типов нод требовния к ресурсам разные. 
-6. В результате должно быть указано количество нод и их параметры.
+1. Домашняя работа оформляется в своём Git репозитории в файле README.md. Выполненное домашнее задание пришлите ссылкой на .md-файл в вашем репозитории.
+2. Файл README.md должен содержать скриншоты вывода необходимых команд `kubectl`, `helm`, а также скриншоты результатов.
+3. Репозиторий должен содержать тексты манифестов или ссылки на них в файле README.md.
 
-# Решение
+---
 
-### Требования:
-| Type | RAM | vCPU | Replicas |
-| ---- | ---- | ---- | ---- |
-| Database | 4GB | 1 | 3 |
-| Cache | 4GB | 1 | 3 |
-| Frontend | 50MB | 0.2 | 5 |
-| Backend | 600MB | 1 | 10 |
+# Выполнение задания 1
 
-### Ресурсы:
+```bash
+root@ubuntu2204:/home/ubuntu/7-helm$ nano chart.yaml
+root@ubuntu2204:/home/ubuntu/7-helm$ nano values.yaml
+root@ubuntu2204:/home/ubuntu/7-helm$ nano values-v2.yaml
+root@ubuntu2204:/home/ubuntu/7-helm$ mkdir templates
+root@ubuntu2204:/home/ubuntu/7-helm$ nano templates/values-v3.yaml
+root@ubuntu2204:/home/ubuntu/7-helm$ nano templates/nginx-deployment.yaml
+root@ubuntu2204:/home/ubuntu/7-helm$ nano templates/network-multitool-deployment.yaml
+```
 
-RAM - 30.25GB
+### Chart.yaml
+```yaml
+apiVersion: v2
+name: my-app
+description: Helm chart for deploying nginx and wbitt/network-multitool
+version: 0.1.0
+appVersion: "1.0.0"
+```
 
-vCPU - 17
+### values.yaml
+```yaml
+nginx:
+  image: nginx:1.25.3
+  replicas: 2
+  service:
+    type: ClusterIP
+    port: 80
 
-### Оверхед под системные службы (kubelet, CRI, OS...)
+networkMultitool:
+  image: wbitt/network-multitool:latest
+  replicas: 1
+  service:
+    type: ClusterIP
+    port: 8080
+```
 
-RAM - ~1GB на ноду
+### values-v2.yaml
+```yaml
+nginx:
+  image: nginx:1.24.0
+  replicas: 2
+  service:
+    type: ClusterIP
+    port: 80
 
-vCPU - ~0.3 на ноду
+networkMultitool:
+  image: wbitt/network-multitool:latest
+  replicas: 1
+  service:
+    type: ClusterIP
+    port: 8080
+```
 
-### Требования к Kubernetes кластеру:
+### values-v3.yaml
+```yaml
+nginx:
+  image: nginx:latest
+  replicas: 2
+  service:
+    type: ClusterIP
+    port: 80
 
-#### Ноды управления (control plane)
+networkMultitool:
+  image: wbitt/network-multitool
+  replicas: 1
+  service:
+    type: ClusterIP
+    port: 8080
+```
 
-| Type | Count | RAM | vCPU | Disk |
-| ---- | ---- | ---- | ---- | ---- |
-| Control plane | 3 | 4GB | 2 | 50GB SSD |
+### templates/nginx-deployment.yaml
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-nginx
+  labels:
+    app: {{ .Chart.Name }}
+    component: nginx
+spec:
+  replicas: {{ .Values.nginx.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+      component: nginx
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        component: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: {{ .Values.nginx.image }}
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-nginx
+spec:
+  type: {{ .Values.nginx.service.type }}
+  ports:
+  - port: {{ .Values.nginx.service.port }}
+    targetPort: 80
+  selector:
+    app: {{ .Chart.Name }}
+    component: nginx
+```
 
-- Нечётное количество (3) — требование кворума etcd: отказ одной мастер-ноды
-  не приводит к потере консистентности кластера.
-- На control plane работают apiserver, etcd, scheduler, controller-manager —
-  их ресурсы не входят в расчёт ресурсов приложения.
-- Пользовательские поды на мастер-нодах не запускаются
-  (taint node-role.kubernetes.io/master:NoSchedule),
-  поэтому ёмкость кластера под приложение считается только по worker-нодам.
-- Диск SSD обязателен: etcd чувствителен к латентности I/O.
-- При использовании managed-кластера мастер-ноды предоставляет провайдер —
-  выбор сводится к тарифу.
+### templates/network-multitool-deployment.yaml
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-network-multitool
+  labels:
+    app: {{ .Chart.Name }}
+    component: network-multitool
+spec:
+  replicas: {{ .Values.networkMultitool.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+      component: network-multitool
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        component: network-multitool
+    spec:
+      containers:
+      - name: network-multitool
+        image: {{ .Values.networkMultitool.image }}
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-network-multitool
+spec:
+  type: {{ .Values.networkMultitool.service.type }}
+  ports:
+  - port: {{ .Values.networkMultitool.service.port }}
+    targetPort: 8080
+  selector:
+    app: {{ .Chart.Name }}
+    component: network-multitool
+```
 
-#### Рабочие ноды (worker nodes)
+------
+### Задание 2. Запустить две версии в разных неймспейсах
 
-| Type | Count | RAM | vCPU | Disk |
-| ---- | ---- | ---- | ---- | ---- |
-| Worker | 4 | 32GB | 8 | SSD |
+1. Подготовив чарт, необходимо его проверить. Запуститe несколько копий приложения.
+2. Одну версию в namespace=app1, вторую версию в том же неймспейсе, третью версию в namespace=app2.
+3. Продемонстрируйте результат.
 
-Полезная ёмкость одной ноды после вычета оверхеда системных служб:
-RAM - ~31GB, vCPU - ~7.7.
+---
 
-- vCPU: 17 / 7.7 ≈ 2.2 → минимум 3 ноды.
-- RAM: 30.25 / 31 ≈ 1 → 2 ноды с запасом, ограничивающий фактор — CPU.
-- Для гарантии отказоустойчивости (алгоритм N+1): при отказе одной ноды
-  нагрузка должна помещаться на оставшиеся. На 3 нодах остаётся
-  3 × 7.7 ≈ 23 vCPU — этого достаточно, поэтому N+1 даёт 4 ноды.
+# Выполнение задания 2
+```bash
+root@ubuntu2204:/home/ubuntu/7-helm# microk8s helm3 lint .
+==> Linting .
+[INFO] Chart.yaml: icon is recommended
 
-### Итог
+1 chart(s) linted, 0 chart(s) failed
+```
 
-Кластер: 3 ноды управления + 4 рабочие ноды = 7 нод.
+```bash
+root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl create namespace app1
+namespace/app1 created
+```
 
-RAM - 140GB (3×4 + 4×32)
+```bash
+root@ubuntu2204:/home/ubuntu/7-helm# microk8s helm3 install my-app-v1 . -n app1
+NAME: my-app-v1
+LAST DEPLOYED: Wed 17 Nov  23:35:56 2026
+NAMESPACE: app1
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+```
 
-vCPU - 38 (3×2 + 4×8)
+```bash
+root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl get all -n app1
+NAME                                               READY   STATUS    RESTARTS   AGE
+pod/my-app-v1-network-multitool-74f6fb8fd4-s6jtg   1/1     Running   0          61s
+pod/my-app-v1-nginx-66b9599867-4nlgq               1/1     Running   0          61s
+pod/my-app-v1-nginx-66b9599867-lcgfr               1/1     Running   0          61s
 
-Полезная ёмкость под приложение сосредоточена на worker-нодах:
-~124GB RAM и ~31 vCPU против требуемых 30.25GB и 17 vCPU.
-Ресурсы control plane вынесены в отдельную статью расходов и не участвуют
-в расчёте ёмкости под поды приложения.
+NAME                                  TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/my-app-v1-network-multitool   ClusterIP   10.152.183.247   <none>        8080/TCP   63s
+service/my-app-v1-nginx               ClusterIP   10.152.183.100   <none>        80/TCP     63s
+
+NAME                                          READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/my-app-v1-network-multitool   1/1     1            1           61s
+deployment.apps/my-app-v1-nginx               2/2     2            2           61s
+
+NAME                                                     DESIRED   CURRENT   READY   AGE
+replicaset.apps/my-app-v1-network-multitool-74f6fb8fd4   1         1         1       61s
+replicaset.apps/my-app-v1-nginx-66b9599867               2         2         2       61s
+```
+
+```bash
+root@ubuntu2204:/home/ubuntu/7-helm# microk8s helm3 install my-app-v2 . -n app1 -f values-v2.yaml
+NAME: my-app-v2
+LAST DEPLOYED: Wed 17 Nov  18:05:11 2026
+NAMESPACE: app1
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+```
+
+```bash
+root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl get all -n app1
+NAME                                               READY   STATUS              RESTARTS   AGE
+pod/my-app-v1-network-multitool-74f6fb8fd4-s6jtg   1/1     Running             0          2m45s
+pod/my-app-v1-nginx-66b9599867-4nlgq               1/1     Running             0          2m45s
+pod/my-app-v1-nginx-66b9599867-lcgfr               1/1     Running             0          2m45s
+pod/my-app-v2-network-multitool-74f6fb8fd4-fls9p   1/1     Running             0          30s
+pod/my-app-v2-nginx-6ddc9c78bf-bsc7r               0/1     ContainerCreating   0          30s
+pod/my-app-v2-nginx-6ddc9c78bf-h8jsq               0/1     ContainerCreating   0          30s
+
+NAME                                  TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/my-app-v1-network-multitool   ClusterIP   10.152.183.247   <none>        8080/TCP   2m47s
+service/my-app-v1-nginx               ClusterIP   10.152.183.100   <none>        80/TCP     2m47s
+service/my-app-v2-network-multitool   ClusterIP   10.152.183.35    <none>        8080/TCP   32s
+service/my-app-v2-nginx               ClusterIP   10.152.183.206   <none>        80/TCP     32s
+
+NAME                                          READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/my-app-v1-network-multitool   1/1     1            1           2m45s
+deployment.apps/my-app-v1-nginx               2/2     2            2           2m45s
+deployment.apps/my-app-v2-network-multitool   1/1     1            1           31s
+deployment.apps/my-app-v2-nginx               0/2     2            0           31s
+
+NAME                                                     DESIRED   CURRENT   READY   AGE
+replicaset.apps/my-app-v1-network-multitool-74f6fb8fd4   1         1         1       2m45s
+replicaset.apps/my-app-v1-nginx-66b9599867               2         2         2       2m45s
+replicaset.apps/my-app-v2-network-multitool-74f6fb8fd4   1         1         1       30s
+replicaset.apps/my-app-v2-nginx-6ddc9c78bf               2         2         0       30s
+```
+
+```bash
+root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl create namespace app2
+namespace/app2 created
+```
+
+```bash
+root@ubuntu2204:/home/ubuntu/7-helm# microk8s helm3 install my-app-v3 . -n app2 -f values-v3.yaml
+NAME: my-app-v3
+LAST DEPLOYED: Wed 17 Nov  18:08:01 2026
+NAMESPACE: app2
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+```
+
+```bash
+root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl get all -n app2
+NAME                                               READY   STATUS    RESTARTS   AGE
+pod/my-app-v3-network-multitool-669fd8fbc9-nn6bn   1/1     Running   0          31s
+pod/my-app-v3-nginx-dd75567dc-mh6qf                1/1     Running   0          31s
+pod/my-app-v3-nginx-dd75567dc-rqvzx                1/1     Running   0          31s
+
+NAME                                  TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/my-app-v3-network-multitool   ClusterIP   10.152.183.195   <none>        8080/TCP   34s
+service/my-app-v3-nginx               ClusterIP   10.152.183.29    <none>        80/TCP     34s
+
+NAME                                          READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/my-app-v3-network-multitool   1/1     1            1           32s
+deployment.apps/my-app-v3-nginx               2/2     2            2           32s
+
+NAME                                                     DESIRED   CURRENT   READY   AGE
+replicaset.apps/my-app-v3-network-multitool-669fd8fbc9   1         1         1       31s
+replicaset.apps/my-app-v3-nginx-dd75567dc                2         2         2       31s
+```
+
+```bash
+root@ubuntu2204:/home/ubuntu/7-helm# microk8s kubectl get all -A
+NAMESPACE              NAME                                                        READY   STATUS    RESTARTS      AGE
+app1                   pod/my-app-v1-network-multitool-74f6fb8fd4-s6jtg            1/1     Running   0             6m27s
+app1                   pod/my-app-v1-nginx-66b9599867-4nlgq                        1/1     Running   0             6m27s
+app1                   pod/my-app-v1-nginx-66b9599867-lcgfr                        1/1     Running   0             6m27s
+app1                   pod/my-app-v2-network-multitool-74f6fb8fd4-fls9p            1/1     Running   0             4m12s
+app1                   pod/my-app-v2-nginx-6ddc9c78bf-bsc7r                        1/1     Running   0             4m12s
+app1                   pod/my-app-v2-nginx-6ddc9c78bf-h8jsq                        1/1     Running   0             4m12s
+app2                   pod/my-app-v3-network-multitool-669fd8fbc9-nn6bn            1/1     Running   0             81s
+app2                   pod/my-app-v3-nginx-dd75567dc-mh6qf                         1/1     Running   0             81s
+app2                   pod/my-app-v3-nginx-dd75567dc-rqvzx                         1/1     Running   0             81s
+
+NAMESPACE              NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                         AGE
+app1                   service/my-app-v1-network-multitool            ClusterIP   10.152.183.247   <none>        8080/TCP                        6m30s
+app1                   service/my-app-v1-nginx                        ClusterIP   10.152.183.100   <none>        80/TCP                          6m30s
+app1                   service/my-app-v2-network-multitool            ClusterIP   10.152.183.35    <none>        8080/TCP                        4m15s
+app1                   service/my-app-v2-nginx                        ClusterIP   10.152.183.206   <none>        80/TCP                          4m15s
+app2                   service/my-app-v3-network-multitool            ClusterIP   10.152.183.195   <none>        8080/TCP                        85s
+app2                   service/my-app-v3-nginx                        ClusterIP   10.152.183.29    <none>        80/TCP                          85s
+
+NAMESPACE              NAME                                                   READY   UP-TO-DATE   AVAILABLE   AGE
+app1                   deployment.apps/my-app-v1-network-multitool            1/1     1            1           6m29s
+app1                   deployment.apps/my-app-v1-nginx                        2/2     2            2           6m29s
+app1                   deployment.apps/my-app-v2-network-multitool            1/1     1            1           4m15s
+app1                   deployment.apps/my-app-v2-nginx                        2/2     2            2           4m15s
+app2                   deployment.apps/my-app-v3-network-multitool            1/1     1            1           84s
+app2                   deployment.apps/my-app-v3-nginx                        2/2     2            2           84s
+
+NAMESPACE              NAME                                                              DESIRED   CURRENT   READY   AGE
+app1                   replicaset.apps/my-app-v1-network-multitool-74f6fb8fd4            1         1         1       6m29s
+app1                   replicaset.apps/my-app-v1-nginx-66b9599867                        2         2         2       6m29s
+app1                   replicaset.apps/my-app-v2-network-multitool-74f6fb8fd4            1         1         1       4m14s
+app1                   replicaset.apps/my-app-v2-nginx-6ddc9c78bf                        2         2         2       4m14s
+app2                   replicaset.apps/my-app-v3-network-multitool-669fd8fbc9            1         1         1       83s
+app2                   replicaset.apps/my-app-v3-nginx-dd75567dc                         2         2         2       83s
+```
+
+
+
+
+
+
 
